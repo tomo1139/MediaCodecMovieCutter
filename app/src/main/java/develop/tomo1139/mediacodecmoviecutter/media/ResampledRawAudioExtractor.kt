@@ -12,7 +12,7 @@ class ResampledRawAudioExtractor(inputFilePath: String, outputFilePath: String, 
     private val audioExtractor = MediaExtractor()
     private val audioTrackIdx: Int
     private val inputAudioFormat: MediaFormat
-    private val encodeAudioFormat: MediaFormat
+    private val audioChannelCount: Int
 
     private val audioDecoder: MediaCodec
 
@@ -46,13 +46,10 @@ class ResampledRawAudioExtractor(inputFilePath: String, outputFilePath: String, 
         Logger.e("inputAudioFormat: $inputAudioFormat")
 
         val inputAudioMime = inputAudioFormat.getString(MediaFormat.KEY_MIME)
-        val sampleRate = inputAudioFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
-        val channelCount = inputAudioFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
-        encodeAudioFormat = MediaFormat.createAudioFormat(inputAudioMime, sampleRate, channelCount).also {
-            it.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
-            it.setInteger(MediaFormat.KEY_BIT_RATE, inputAudioFormat.getInteger(MediaFormat.KEY_BIT_RATE))
+        audioChannelCount = inputAudioFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+        if (audioChannelCount != 1 && audioChannelCount != 2) {
+            throw RuntimeException("invalid channel count $audioChannelCount")
         }
-        Logger.e("encodeAudioFormat: $encodeAudioFormat")
 
         audioDecoder = MediaCodec.createDecoderByType(inputAudioMime)
         audioDecoder.configure(inputAudioFormat, null, null, 0)
@@ -124,13 +121,30 @@ class ResampledRawAudioExtractor(inputFilePath: String, outputFilePath: String, 
             decoderOutputBuffer.position(decoderOutputBufferInfo.offset)
             decoderOutputBuffer.limit(decoderOutputBufferInfo.offset + decoderOutputBufferInfo.size)
 
-            val dst = ByteArray(decoderOutputBufferInfo.size)
+            val decoderOutputData = ByteArray(decoderOutputBufferInfo.size)
             val oldPosition = decoderOutputBuffer?.position() ?: 0
-            decoderOutputBuffer?.get(dst)
+            decoderOutputBuffer?.get(decoderOutputData)
             decoderOutputBuffer?.position(oldPosition)
 
+            val writeData = if (audioChannelCount == 2) {
+                val shortArray = ShortArray(decoderOutputData.size / 4) {
+                    val left = decoderOutputData[it * 4] + (decoderOutputData[(it * 4) + 1].toInt() shl 8)
+                    val right = decoderOutputData[it * 4 + 2] + (decoderOutputData[(it * 4) + 3].toInt() shl 8)
+                    ((left + right) / 2).toShort()
+                }
+                ByteArray(shortArray.size * 2) {
+                    if (it % 2 == 0) {
+                        (shortArray[it / 2].toInt() and 0xff).toByte()
+                    } else {
+                        ((shortArray[it / 2].toInt() shr 8) and 0xff).toByte()
+                    }
+                }
+            } else {
+                decoderOutputData
+            }
+
             try {
-                rawAudioFileOutputStream?.write(dst)
+                rawAudioFileOutputStream?.write(writeData)
             } catch (e: Exception) {
                 throw RuntimeException("raw audio write error")
             }
