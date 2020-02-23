@@ -1,11 +1,12 @@
 package develop.tomo1139.mediacodecmoviecutter.media
 
 import android.media.*
+import android.media.MediaExtractor.SEEK_TO_CLOSEST_SYNC
 import develop.tomo1139.mediacodecmoviecutter.util.Logger
 import java.nio.ByteBuffer
 
 
-class ExtractDecodeEncodeMuxer(inputFilePath: String, outputFilePath: String) {
+class ExtractDecodeEncodeMuxer(inputFilePath: String, outputFilePath: String, private val startMs: Long, private val endMs: Long) {
     private val videoExtractor = MediaExtractor()
     private val videoTrackIdx: Int
     private val inputVideoFormat: MediaFormat
@@ -101,15 +102,20 @@ class ExtractDecodeEncodeMuxer(inputFilePath: String, outputFilePath: String) {
         muxer.setOrientationHint(videoDegree)
     }
 
-    fun doExtractDecodeEncodeMux() {
+    fun cutMovie(onProgressUpdated: (progress: String) -> Unit) {
         videoDecoder.start()
         videoEncoder.start()
         audioDecoder.start()
         audioEncoder.start()
 
+        videoExtractor.seekTo(startMs*1000, SEEK_TO_CLOSEST_SYNC)
+        audioExtractor.seekTo(startMs*1000, SEEK_TO_CLOSEST_SYNC)
+
+        onProgressUpdated("0 %")
+
         while (!isMuxEnd) {
             if (!isVideoExtractEnd) { isVideoExtractEnd = extract(videoExtractor, videoDecoder) }
-            if (!isAudioExtractEnd) { isAudioExtractEnd = extract(audioExtractor, audioDecoder) }
+            if (!isAudioExtractEnd) { isAudioExtractEnd = extract(audioExtractor, audioDecoder, onProgressUpdated) }
             if (!isVideoDecodeEnd) { isVideoDecodeEnd = decode(videoDecoder, videoEncoder) }
             if (!isAudioDecodeEnd) { isAudioDecodeEnd = decode(audioDecoder, audioEncoder) }
             if (!isVideoEncodeEnd) {
@@ -130,6 +136,8 @@ class ExtractDecodeEncodeMuxer(inputFilePath: String, outputFilePath: String) {
             }
         }
 
+        onProgressUpdated("end")
+
         videoExtractor.release()
         videoDecoder.stop()
         videoDecoder.release()
@@ -144,14 +152,23 @@ class ExtractDecodeEncodeMuxer(inputFilePath: String, outputFilePath: String) {
         muxer.release()
     }
 
-    private fun extract(extractor: MediaExtractor, decoder: MediaCodec): Boolean {
+    private fun extract(extractor: MediaExtractor, decoder: MediaCodec, onProgressUpdated: ((progress: String) -> Unit)? = null): Boolean {
         var isExtractEnd = false
         val inputBufferIdx = decoder.dequeueInputBuffer(CODEC_TIMEOUT_IN_US)
         if (inputBufferIdx >= 0) {
             val inputBuffer = decoder.getInputBuffer(inputBufferIdx) as ByteBuffer
             val sampleSize = extractor.readSampleData(inputBuffer, 0)
             if (sampleSize > 0) {
-                decoder.queueInputBuffer(inputBufferIdx, 0, sampleSize, extractor.sampleTime, extractor.sampleFlags)
+                if (extractor.sampleTime < endMs*1000) {
+                    val progress = (extractor.sampleTime-startMs*1000)*100 / (endMs*1000 - startMs*1000)
+                    onProgressUpdated?.invoke("$progress %")
+
+                    decoder.queueInputBuffer(inputBufferIdx, 0, sampleSize, extractor.sampleTime, extractor.sampleFlags)
+                } else {
+                    Logger.e("isExtractEnd = true")
+                    isExtractEnd = true
+                    decoder.queueInputBuffer(inputBufferIdx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                }
             } else {
                 Logger.e("isExtractEnd = true")
                 isExtractEnd = true

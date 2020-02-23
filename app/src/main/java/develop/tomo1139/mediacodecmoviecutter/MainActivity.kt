@@ -59,21 +59,21 @@ class MainActivity : AppCompatActivity() {
         if (resultCode != Activity.RESULT_OK) return
 
         if (requestCode == REQUEST_CODE_FILE_SELECT) {
-            data?.data ?: return
+            val uri = data?.data ?: return
 
-            val inputFilePath = FilePickerUtil.getPath(this, data.data) ?: return
+            val inputFilePath = FilePickerUtil.getPath(this, uri) ?: return
             val outputFilePath = getExternalFilesDir(null)?.absolutePath + "/output.mp4"
             Logger.e("input file path: $inputFilePath, outputFilePath: $outputFilePath")
 
+            val startMs = binding.startTimeMs.text.toString().toLong()
+            val endMs = binding.endTimeMs.text.toString().toLong()
+
             Thread {
-                ExtractDecodeEncodeMuxer(inputFilePath, outputFilePath).doExtractDecodeEncodeMux()
-                /*
-                try {
-                    ExtractDecodeEncodeMuxer(inputFilePath, outputFilePath).doExtractDecodeEncodeMux()
-                } catch (e: Exception) {
-                    Logger.e("e: $e")
+                ExtractDecodeEncodeMuxer(inputFilePath, outputFilePath, startMs, endMs).cutMovie {
+                    runOnUiThread {
+                        binding.progress.text = it
+                    }
                 }
-                */
                 runOnUiThread {
                     Logger.e("Completed!! outputFilePath: $outputFilePath")
                     Toast.makeText(this, "Completed!!", Toast.LENGTH_LONG).show()
