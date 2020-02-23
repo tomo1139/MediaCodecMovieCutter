@@ -136,8 +136,6 @@ class ExtractDecodeEncodeMuxer(inputFilePath: String, outputFilePath: String, pr
             }
         }
 
-        onProgressUpdated("end")
-
         videoExtractor.release()
         videoDecoder.stop()
         videoDecoder.release()

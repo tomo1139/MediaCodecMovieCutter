@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.View
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -68,6 +69,7 @@ class MainActivity : AppCompatActivity() {
             val startMs = binding.startTimeMs.text.toString().toLong()
             val endMs = binding.endTimeMs.text.toString().toLong()
 
+            binding.progressBar.visibility = View.VISIBLE
             Thread {
                 ExtractDecodeEncodeMuxer(inputFilePath, outputFilePath, startMs, endMs).cutMovie {
                     runOnUiThread {
@@ -77,6 +79,7 @@ class MainActivity : AppCompatActivity() {
                 runOnUiThread {
                     Logger.e("Completed!! outputFilePath: $outputFilePath")
                     Toast.makeText(this, "Completed!!", Toast.LENGTH_LONG).show()
+                    binding.progressBar.visibility = View.GONE
                 }
             }.start()
         }
