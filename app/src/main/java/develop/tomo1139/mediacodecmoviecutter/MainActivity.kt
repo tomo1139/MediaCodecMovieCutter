@@ -69,6 +69,7 @@ class MainActivity : AppCompatActivity() {
             val startMs = binding.startTimeMs.text.toString().toLong()
             val endMs = binding.endTimeMs.text.toString().toLong()
 
+            val startTimeMs = System.currentTimeMillis()
             binding.progressBar.visibility = View.VISIBLE
             Thread {
                 ExtractDecodeEncodeMuxer(inputFilePath, outputFilePath, startMs, endMs).cutMovie {
@@ -77,8 +78,9 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 runOnUiThread {
+                    val endTimeMs = System.currentTimeMillis()
                     Logger.e("Completed!! outputFilePath: $outputFilePath")
-                    Toast.makeText(this, "Completed!!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "Completed!! ${endTimeMs - startTimeMs} ms", Toast.LENGTH_LONG).show()
                     binding.progressBar.visibility = View.GONE
                 }
             }.start()
