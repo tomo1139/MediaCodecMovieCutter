@@ -13,7 +13,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.databinding.DataBindingUtil
 import develop.tomo1139.mediacodecmoviecutter.databinding.ActivityMainBinding
-import develop.tomo1139.mediacodecmoviecutter.media.ExtractDecodeEncodeMuxer
+import develop.tomo1139.mediacodecmoviecutter.media.ResampledRawAudioExtractor
 import develop.tomo1139.mediacodecmoviecutter.util.FilePickerUtil
 import develop.tomo1139.mediacodecmoviecutter.util.Logger
 
@@ -72,15 +72,15 @@ class MainActivity : AppCompatActivity() {
             val startTimeMs = System.currentTimeMillis()
             binding.progressBar.visibility = View.VISIBLE
             Thread {
-                ExtractDecodeEncodeMuxer(inputFilePath, outputFilePath, startMs, endMs).cutMovie {
+                ResampledRawAudioExtractor(inputFilePath, outputFilePath, startMs, endMs).extractResampledRawAudio {
                     runOnUiThread {
                         binding.progress.text = it
                     }
                 }
                 runOnUiThread {
-                    val endTimeMs = System.currentTimeMillis()
-                    Logger.e("Completed!! outputFilePath: $outputFilePath")
-                    Toast.makeText(this, "Completed!! ${endTimeMs - startTimeMs} ms", Toast.LENGTH_LONG).show()
+                    val timeMs = System.currentTimeMillis() - startTimeMs
+                    Logger.e("Completed!! outputFilePath: $outputFilePath , $timeMs ms")
+                    Toast.makeText(this, "Completed!! $timeMs ms", Toast.LENGTH_LONG).show()
                     binding.progressBar.visibility = View.GONE
                 }
             }.start()
