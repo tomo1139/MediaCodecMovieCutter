@@ -58,6 +58,10 @@ class ResampledRawAudioExtractor(
         if (audioChannelCount != 1 && audioChannelCount != 2) {
             throw RuntimeException("invalid channel count $audioChannelCount")
         }
+        val sampleRate = inputAudioFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+        if (sampleRate != 48000) {
+            throw RuntimeException("only support 48khz sampleRate: $sampleRate")
+        }
 
         audioDecoder = MediaCodec.createDecoderByType(inputAudioMime)
         audioDecoder.configure(inputAudioFormat, null, null, 0)
