@@ -8,7 +8,15 @@ import java.io.FileOutputStream
 import java.nio.ByteBuffer
 
 
-class ResampledRawAudioExtractor(inputFilePath: String, outputFilePath: String, private val startMs: Long, private val endMs: Long) {
+class ResampledRawAudioExtractor(
+    inputFilePath: String,
+    private val workingDirPath: String,
+    private val outputFileName: String,
+    private val startMs: Long,
+    private val endMs: Long
+) {
+    private external fun resample(inputFilePath: String, outputFilePath: String): String
+
     private val audioExtractor = MediaExtractor()
     private val audioTrackIdx: Int
     private val inputAudioFormat: MediaFormat
@@ -25,12 +33,12 @@ class ResampledRawAudioExtractor(inputFilePath: String, outputFilePath: String, 
     private var rawAudioFileOutputStream: FileOutputStream? = null
 
     init {
-        val outputFile = File(outputFilePath)
-        if (outputFile.exists()) {
-            outputFile.delete()
+        val rawAudioFile = File("$workingDirPath/$RAW_AUDIO_FILE_NAME")
+        if (rawAudioFile.exists()) {
+            rawAudioFile.delete()
         }
         try {
-            rawAudioFileOutputStream = FileOutputStream(outputFile,false)
+            rawAudioFileOutputStream = FileOutputStream(rawAudioFile, false)
             //rawAudioFileOutputStream = openFileOutput("output.wav", Context.MODE_PRIVATE) // TODO
         } catch (e: Exception) {
             throw RuntimeException("file open error")
@@ -67,14 +75,22 @@ class ResampledRawAudioExtractor(inputFilePath: String, outputFilePath: String, 
             if (!isAudioDecodeEnd) { isAudioDecodeEnd = decode(audioDecoder) }
         }
 
-        audioExtractor.release()
-        audioDecoder.stop()
-        audioDecoder.release()
         try {
             rawAudioFileOutputStream?.close()
         } catch (e: Exception) {
             throw RuntimeException("rawAudioFileOutputStream close error")
         }
+
+        val rawAudioFilePath = "$workingDirPath/$RAW_AUDIO_FILE_NAME"
+        val outputFilePath = "$workingDirPath/$outputFileName"
+
+        Logger.e("resample start inputFilePath: $rawAudioFilePath, outputFilePath: $outputFilePath")
+        val result = resample(rawAudioFilePath, outputFilePath)
+        Logger.e("resample end result: $result")
+
+        audioExtractor.release()
+        audioDecoder.stop()
+        audioDecoder.release()
     }
 
     private fun extract(extractor: MediaExtractor, decoder: MediaCodec, onProgressUpdated: ((progress: String) -> Unit)? = null): Boolean {
@@ -167,5 +183,10 @@ class ResampledRawAudioExtractor(inputFilePath: String, outputFilePath: String, 
 
     companion object {
         private const val CODEC_TIMEOUT_IN_US = 10000L
+        private const val RAW_AUDIO_FILE_NAME = "rawAudio"
+
+        init {
+            System.loadLibrary("resampler")
+        }
     }
 }

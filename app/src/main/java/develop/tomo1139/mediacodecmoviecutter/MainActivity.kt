@@ -63,8 +63,8 @@ class MainActivity : AppCompatActivity() {
             val uri = data?.data ?: return
 
             val inputFilePath = FilePickerUtil.getPath(this, uri) ?: return
-            val outputFilePath = getExternalFilesDir(null)?.absolutePath + "/output.mp4"
-            Logger.e("input file path: $inputFilePath, outputFilePath: $outputFilePath")
+            val workingDirPath = getExternalFilesDir(null)?.absolutePath ?: return
+            Logger.e("input file path: $inputFilePath, workingDirPath: $workingDirPath, outputFileName: $OUTPUT_FILE_NAME")
 
             val startMs = binding.startTimeMs.text.toString().toLong()
             val endMs = binding.endTimeMs.text.toString().toLong()
@@ -72,14 +72,14 @@ class MainActivity : AppCompatActivity() {
             val startTimeMs = System.currentTimeMillis()
             binding.progressBar.visibility = View.VISIBLE
             Thread {
-                ResampledRawAudioExtractor(inputFilePath, outputFilePath, startMs, endMs).extractResampledRawAudio {
+                ResampledRawAudioExtractor(inputFilePath, workingDirPath, OUTPUT_FILE_NAME, startMs, endMs).extractResampledRawAudio {
                     runOnUiThread {
                         binding.progress.text = it
                     }
                 }
                 runOnUiThread {
                     val timeMs = System.currentTimeMillis() - startTimeMs
-                    Logger.e("Completed!! outputFilePath: $outputFilePath , $timeMs ms")
+                    Logger.e("Completed!! outputFilePath: $OUTPUT_FILE_NAME , $timeMs ms")
                     Toast.makeText(this, "Completed!! $timeMs ms", Toast.LENGTH_LONG).show()
                     binding.progressBar.visibility = View.GONE
                 }
@@ -90,5 +90,6 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val REQUEST_CODE_PERMISSION = 100
         private const val REQUEST_CODE_FILE_SELECT = 101
+        private const val OUTPUT_FILE_NAME = "resampledRawAudio"
     }
 }
