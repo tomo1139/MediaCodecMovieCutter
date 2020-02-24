@@ -126,7 +126,7 @@ class ResampledRawAudioExtractor(inputFilePath: String, outputFilePath: String, 
             decoderOutputBuffer?.get(decoderOutputData)
             decoderOutputBuffer?.position(oldPosition)
 
-            val writeData = if (audioChannelCount == 2) {
+            val monoData = if (audioChannelCount == 2) {
                 val shortArray = ShortArray(decoderOutputData.size / 4) {
                     val left = decoderOutputData[it * 4] + (decoderOutputData[(it * 4) + 1].toInt() shl 8)
                     val right = decoderOutputData[it * 4 + 2] + (decoderOutputData[(it * 4) + 3].toInt() shl 8)
@@ -144,7 +144,7 @@ class ResampledRawAudioExtractor(inputFilePath: String, outputFilePath: String, 
             }
 
             try {
-                rawAudioFileOutputStream?.write(writeData)
+                rawAudioFileOutputStream?.write(monoData)
             } catch (e: Exception) {
                 throw RuntimeException("raw audio write error")
             }
